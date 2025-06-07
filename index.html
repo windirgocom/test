@@ -303,7 +303,7 @@
 
         <!-- Error Screen -->
         <div id="errorScreen" class="error hidden">
-            <p>Bir hata oluştu. Lütfen sayfayı yenileyin.</p>
+            <p id="errorMessage">Bir hata oluştu. Lütfen sayfayı yenileyin.</p>
         </div>
 
         <!-- Game Screen -->
@@ -362,7 +362,7 @@
     </div>
 
     <script>
-        // Supabase configuration - will be loaded from Cloudflare environment
+        // Load configuration from Cloudflare environment
         let SUPABASE_URL = '';
         let SUPABASE_ANON_KEY = '';
         
@@ -376,17 +376,25 @@
                     SUPABASE_ANON_KEY = config.supabaseKey;
                     return true;
                 } else {
-                    // Fallback for development - you should remove these in production
-                    console.warn('Could not load config from API, using fallback');
-                    SUPABASE_URL = '';
-                    SUPABASE_ANON_KEY = '';
+                    // Fallback for development - keep empty for now
+                    console.warn('Could not load config from API');
+                    SUPABASE_URL = ''; // Keep empty - add your URL here if needed for development
+                    SUPABASE_ANON_KEY = ''; // Keep empty - add your key here if needed for development
+                    
+                    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+                        throw new Error('Supabase configuration not available');
+                    }
                     return true;
                 }
             } catch (error) {
                 console.error('Error loading config:', error);
                 // Fallback for development
-                SUPABASE_URL = '';
-                SUPABASE_ANON_KEY = '';
+                SUPABASE_URL = ''; // Keep empty - add your URL here if needed for development
+                SUPABASE_ANON_KEY = ''; // Keep empty - add your key here if needed for development
+                
+                if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+                    throw new Error('Supabase configuration not available');
+                }
                 return true;
             }
         }
@@ -405,17 +413,33 @@
             userAnswers: []
         };
 
-        // URL parameters
+        // URL parameters with validation
         const urlParams = new URLSearchParams(window.location.search);
-        const ruid = urlParams.get('ruid') || 'test-user';
-        const takmaad = urlParams.get('takmaad') || 'Test Kullanıcı';
-        const yarismaadi = urlParams.get('yarismaadi') || 'Test Yarışması';
-        const firmaid = urlParams.get('firmaid') || 'test-firma';
-        const kategori = urlParams.get('kategori') || 'genel';
-        const yarismaid = urlParams.get('yarismaid') || 'test-yarisma';
+        const ruid = urlParams.get('ruid');
+        const takmaad = urlParams.get('takmaad');
+        const yarismaadi = urlParams.get('yarismaadi');
+        const firmaid = urlParams.get('firmaid');
+        const kategori = urlParams.get('kategori');
+        const yarismaid = urlParams.get('yarismaid');
+
+        // Validate required parameters
+        function validateParameters() {
+            if (!ruid || !takmaad || !yarismaadi || !firmaid || !kategori || !yarismaid) {
+                return false;
+            }
+            return true;
+        }
 
         // Initialize the game
         document.addEventListener('DOMContentLoaded', async function() {
+            // First validate URL parameters
+            if (!validateParameters()) {
+                document.getElementById('errorMessage').textContent = 
+                    'Gerekli parametreler eksik. Bu sayfaya doğru linkten eriştiğinizden emin olun.';
+                showScreen('errorScreen');
+                return;
+            }
+
             // Load configuration first
             await loadConfig();
             
@@ -429,8 +453,11 @@
         async function loadQuestions() {
             try {
                 console.log('Loading questions for category:', kategori);
-                console.log('Supabase URL:', SUPABASE_URL);
+                console.log('Firm ID:', firmaid);
+                console.log('Contest ID:', yarismaid);
                 
+                // Load questions filtering only by category for now
+                // You can add author_id and contest_id filters if these columns exist in your table
                 const { data, error } = await window.supabaseClient
                     .from('contest_1_data')
                     .select('*')
@@ -444,22 +471,7 @@
                 }
 
                 if (!data || data.length === 0) {
-                    console.log('No questions found for category:', kategori);
-                    // Let's try without category filter for testing
-                    const { data: allData, error: allError } = await window.supabaseClient
-                        .from('contest_1_data')
-                        .select('*')
-                        .limit(10);
-                    
-                    console.log('All data attempt:', { allData, allError });
-                    
-                    if (allError) throw allError;
-                    if (!allData || allData.length === 0) {
-                        throw new Error('Hiç soru bulunamadı');
-                    }
-                    
-                    // Use first 5 questions if category filter doesn't work
-                    return shuffleArray(allData.slice(0, 5));
+                    throw new Error('Bu kategori için soru bulunamadı. Kategori: ' + kategori);
                 }
 
                 console.log('Found questions:', data.length);
@@ -472,17 +484,41 @@
                 console.log('Hard questions:', hardQuestions.length);
 
                 // Select 3 easy and 2 hard questions randomly
-                const selectedQuestions = [
-                    ...getRandomItems(easyQuestions, 3),
-                    ...getRandomItems(hardQuestions, 2)
-                ];
+                let selectedQuestions = [];
+                
+                // Get easy questions (up to 3)
+                const selectedEasy = getRandomItems(easyQuestions, 3);
+                selectedQuestions.push(...selectedEasy);
+                
+                // Get hard questions (up to 2)
+                const selectedHard = getRandomItems(hardQuestions, 2);
+                selectedQuestions.push(...selectedHard);
+
+                // If we don't have enough questions, fill with remaining questions
+                if (selectedQuestions.length < 5) {
+                    const remaining = data.filter(q => !selectedQuestions.includes(q));
+                    const additionalQuestions = getRandomItems(remaining, 5 - selectedQuestions.length);
+                    selectedQuestions.push(...additionalQuestions);
+                }
+
+                // Take only first 5 questions
+                selectedQuestions = selectedQuestions.slice(0, 5);
 
                 console.log('Selected questions:', selectedQuestions.length);
 
-                // If we don't have enough questions, just use what we have
                 if (selectedQuestions.length === 0) {
-                    return shuffleArray(data.slice(0, 5));
+                    throw new Error('Yeterli soru bulunamadı.');
                 }
+
+                // Debug: log question details
+                selectedQuestions.forEach((q, index) => {
+                    console.log(`Question ${index + 1}:`, {
+                        question: q.question,
+                        correctAnswer: q.question_correct_answer,
+                        type: typeof q.question_correct_answer,
+                        options: [q.question_option_1, q.question_option_2, q.question_option_3, q.question_option_4]
+                    });
+                });
 
                 // Shuffle the selected questions
                 return shuffleArray(selectedQuestions);
@@ -585,26 +621,31 @@
             const question = gameState.questions[gameState.currentQuestionIndex];
             
             // Debug logging
-            console.log('Selected option:', selectedOption);
-            console.log('Correct answer:', question.question_correct_answer);
+            console.log('=== ANSWER SELECTION DEBUG ===');
+            console.log('Question:', question.question);
+            console.log('Selected option number:', selectedOption);
+            console.log('Correct answer from DB:', question.question_correct_answer);
             console.log('Correct answer type:', typeof question.question_correct_answer);
             console.log('Selected option type:', typeof selectedOption);
             
-            // Ensure both values are numbers for comparison
-            const correctAnswer = parseInt(question.question_correct_answer);
-            const selectedAnswer = parseInt(selectedOption);
+            // Convert both to strings for comparison (since DB might store as string)
+            const correctAnswerStr = String(question.question_correct_answer).trim();
+            const selectedAnswerStr = String(selectedOption).trim();
             
-            console.log('Parsed correct answer:', correctAnswer);
-            console.log('Parsed selected answer:', selectedAnswer);
+            console.log('Correct answer (string):', correctAnswerStr);
+            console.log('Selected answer (string):', selectedAnswerStr);
             
-            const isCorrect = selectedAnswer === correctAnswer;
+            const isCorrect = selectedAnswerStr === correctAnswerStr;
             
-            console.log('Is correct?', isCorrect);
+            console.log('Comparison result (isCorrect):', isCorrect);
+            console.log('Current wrong answers before this:', gameState.wrongAnswers);
+            console.log('Current correct answers before this:', gameState.correctAnswers);
+            console.log('Current score before this:', gameState.score);
             
             gameState.userAnswers.push({
                 question: question.question,
-                selectedOption: selectedAnswer,
-                correctAnswer: correctAnswer,
+                selectedOption: selectedAnswerStr,
+                correctAnswer: correctAnswerStr,
                 isCorrect
             });
 
@@ -618,7 +659,9 @@
                 else if (gameState.wrongAnswers === 4) points = 12500;
                 
                 gameState.score += points;
-                console.log('Correct! Added points:', points, 'New score:', gameState.score);
+                console.log('✅ CORRECT! Added points:', points);
+                console.log('New score:', gameState.score);
+                console.log('New correct answers count:', gameState.correctAnswers);
             } else {
                 gameState.wrongAnswers++;
                 // Calculate negative points
@@ -629,8 +672,12 @@
                 else if (gameState.wrongAnswers === 5) negativePoints = 12500;
                 
                 gameState.score -= negativePoints;
-                console.log('Wrong! Deducted points:', negativePoints, 'New score:', gameState.score);
+                console.log('❌ WRONG! Deducted points:', negativePoints);
+                console.log('New score:', gameState.score);
+                console.log('New wrong answers count:', gameState.wrongAnswers);
             }
+            
+            console.log('=== END DEBUG ===');
 
             // Move to next question or finish
             gameState.currentQuestionIndex++;
