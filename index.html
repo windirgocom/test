@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yarışma Oyunu</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 800px;
+            width: 90%;
+            min-height: 600px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #4CAF50, #2196F3, #FF9800, #E91E63);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .contest-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .user-nickname {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .score-timer {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .score, .timer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .score-label, .timer-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .score-value, .timer-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .timer-value {
+            color: #e74c3c;
+        }
+
+        .question-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .question-number {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .question-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .question-text {
+            font-size: 22px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+
+        .options-container {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .option {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 15px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .option:hover {
+            background: #e3f2fd;
+            border-color: #2196F3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.2);
+        }
+
+        .option:active {
+            transform: translateY(0);
+        }
+
+        .start-screen, .result-screen {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .start-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .start-subtitle {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 5px 15px rgba(240, 147, 251, 0.3);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 10px 25px rgba(240, 147, 251, 0.4);
+        }
+
+        .result-stats {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #27ae60;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #7f8c8d;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #e74c3c;
+            background: #ffeaea;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 20px;
+                margin: 20px;
+            }
+
+            .user-info {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .score-timer {
+                gap: 20px;
+            }
+
+            .question-text {
+                font-size: 18px;
+            }
+
+            .result-stats {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Start Screen -->
+        <div id="startScreen" class="start-screen">
+            <h1 class="start-title">Yarışmaya Hoş Geldiniz!</h1>
+            <p class="start-subtitle">5 soruluk yarışmaya hazır mısınız?<br>Her doğru cevap için puan kazanacaksınız!</p>
+            <button class="btn" onclick="startQuiz()">Yarışmayı Başlat</button>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="loading hidden">
+            <p>Sorular yükleniyor...</p>
+        </div>
+
+        <!-- Error Screen -->
+        <div id="errorScreen" class="error hidden">
+            <p>Bir hata oluştu. Lütfen sayfayı yenileyin.</p>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="hidden">
+            <div class="header">
+                <h1 id="contestTitle" class="contest-title"></h1>
+            </div>
+            
+            <div class="user-info">
+                <div id="userNickname" class="user-nickname"></div>
+                <div class="score-timer">
+                    <div class="score">
+                        <span class="score-label">Puan</span>
+                        <span id="scoreValue" class="score-value">50000</span>
+                    </div>
+                    <div class="timer">
+                        <span class="timer-label">Süre</span>
+                        <span id="timerValue" class="timer-value">00:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="question-container">
+                <div id="questionNumber" class="question-number"></div>
+                <img id="questionImage" class="question-image hidden" alt="Soru görseli">
+                <div id="questionText" class="question-text"></div>
+            </div>
+
+            <div id="optionsContainer" class="options-container"></div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="resultScreen" class="result-screen hidden">
+            <h1 class="start-title">Yarışma Tamamlandı!</h1>
+            
+            <div class="result-stats">
+                <div class="stat-item">
+                    <div id="correctAnswers" class="stat-value">0</div>
+                    <div class="stat-label">Doğru Cevap</div>
+                </div>
+                <div class="stat-item">
+                    <div id="finalScore" class="stat-value">0</div>
+                    <div class="stat-label">Toplam Puan</div>
+                </div>
+                <div class="stat-item">
+                    <div id="userRank" class="stat-value">-</div>
+                    <div class="stat-label">Sıralama</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 30px;">
+                <button class="btn" onclick="restartQuiz()">Yeniden Oyna</button>
+                <button class="btn btn-secondary" onclick="goToContests()">Yarışmalar'a Dön</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration - will be loaded from Cloudflare environment
+        let SUPABASE_URL = '';
+        let SUPABASE_ANON_KEY = '';
+        
+        // Load configuration from Cloudflare Pages Functions
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const config = await response.json();
+                    SUPABASE_URL = config.supabaseUrl;
+                    SUPABASE_ANON_KEY = config.supabaseKey;
+                    return true;
+                } else {
+                    // Fallback for development - you should remove these in production
+                    console.warn('Could not load config from API, using fallback');
+                    SUPABASE_URL = '';
+                    SUPABASE_ANON_KEY = '';
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error loading config:', error);
+                // Fallback for development
+                SUPABASE_URL = 'https://ehdwgtfoaiwyreqsihmx.supabase.co';
+                SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoZHdndGZvYWl3eXJlcXNpaG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyOTU1NTYsImV4cCI6MjA2NDg3MTU1Nn0.Wslg2HYsijrw1yp8POFNZTJL6nAMt5cT68TN0sn24UY';
+                return true;
+            }
+        }
+        
+        const supabase = null; // Will be initialized after config load
+
+        // Game state
+        let gameState = {
+            questions: [],
+            currentQuestionIndex: 0,
+            score: 50000,
+            wrongAnswers: 0,
+            correctAnswers: 0,
+            startTime: null,
+            timerInterval: null,
+            userAnswers: []
+        };
+
+        // URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const ruid = urlParams.get('ruid') || 'test-user';
+        const takmaad = urlParams.get('takmaad') || 'Test Kullanıcı';
+        const yarismaadi = urlParams.get('yarismaadi') || 'Test Yarışması';
+        const firmaid = urlParams.get('firmaid') || 'test-firma';
+        const kategori = urlParams.get('kategori') || 'genel';
+        const yarismaid = urlParams.get('yarismaid') || 'test-yarisma';
+
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load configuration first
+            await loadConfig();
+            
+            // Initialize Supabase client after config is loaded
+            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            document.getElementById('contestTitle').textContent = yarismaadi;
+            document.getElementById('userNickname').textContent = `Merhaba, ${takmaad}!`;
+        });
+
+        async function loadQuestions() {
+            try {
+                console.log('Loading questions for category:', kategori);
+                console.log('Supabase URL:', SUPABASE_URL);
+                
+                const { data, error } = await window.supabaseClient
+                    .from('contest_1_data')
+                    .select('*')
+                    .eq('question_main_category', kategori);
+
+                console.log('Supabase response:', { data, error });
+
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw error;
+                }
+
+                if (!data || data.length === 0) {
+                    console.log('No questions found for category:', kategori);
+                    // Let's try without category filter for testing
+                    const { data: allData, error: allError } = await window.supabaseClient
+                        .from('contest_1_data')
+                        .select('*')
+                        .limit(10);
+                    
+                    console.log('All data attempt:', { allData, allError });
+                    
+                    if (allError) throw allError;
+                    if (!allData || allData.length === 0) {
+                        throw new Error('Hiç soru bulunamadı');
+                    }
+                    
+                    // Use first 5 questions if category filter doesn't work
+                    return shuffleArray(allData.slice(0, 5));
+                }
+
+                console.log('Found questions:', data.length);
+
+                // Separate questions by difficulty
+                const easyQuestions = data.filter(q => q.question_difficulty === 0);
+                const hardQuestions = data.filter(q => q.question_difficulty === 1);
+
+                console.log('Easy questions:', easyQuestions.length);
+                console.log('Hard questions:', hardQuestions.length);
+
+                // Select 3 easy and 2 hard questions randomly
+                const selectedQuestions = [
+                    ...getRandomItems(easyQuestions, 3),
+                    ...getRandomItems(hardQuestions, 2)
+                ];
+
+                console.log('Selected questions:', selectedQuestions.length);
+
+                // If we don't have enough questions, just use what we have
+                if (selectedQuestions.length === 0) {
+                    return shuffleArray(data.slice(0, 5));
+                }
+
+                // Shuffle the selected questions
+                return shuffleArray(selectedQuestions);
+            } catch (error) {
+                console.error('Error loading questions:', error);
+                throw error;
+            }
+        }
+
+        function getRandomItems(array, count) {
+            const shuffled = [...array].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, Math.min(count, array.length));
+        }
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        async function startQuiz() {
+            showScreen('loadingScreen');
+            
+            try {
+                gameState.questions = await loadQuestions();
+                gameState.currentQuestionIndex = 0;
+                gameState.score = 50000;
+                gameState.wrongAnswers = 0;
+                gameState.correctAnswers = 0;
+                gameState.startTime = Date.now();
+                gameState.userAnswers = [];
+
+                startTimer();
+                showScreen('gameScreen');
+                displayCurrentQuestion();
+            } catch (error) {
+                showScreen('errorScreen');
+            }
+        }
+
+        function startTimer() {
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+            }
+
+            gameState.timerInterval = setInterval(() => {
+                const elapsed = Date.now() - gameState.startTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                document.getElementById('timerValue').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function displayCurrentQuestion() {
+            const question = gameState.questions[gameState.currentQuestionIndex];
+            
+            document.getElementById('questionNumber').textContent = 
+                `Soru ${gameState.currentQuestionIndex + 1} / ${gameState.questions.length}`;
+            
+            document.getElementById('questionText').textContent = question.question;
+            
+            // Handle question image
+            const imageEl = document.getElementById('questionImage');
+            if (question.question_image_link) {
+                imageEl.src = question.question_image_link;
+                imageEl.classList.remove('hidden');
+            } else {
+                imageEl.classList.add('hidden');
+            }
+
+            // Display options
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+
+            const options = [
+                question.question_option_1,
+                question.question_option_2,
+                question.question_option_3,
+                question.question_option_4
+            ];
+
+            options.forEach((option, index) => {
+                if (option) {
+                    const optionEl = document.createElement('div');
+                    optionEl.className = 'option';
+                    optionEl.textContent = option;
+                    optionEl.onclick = () => selectAnswer(index + 1);
+                    optionsContainer.appendChild(optionEl);
+                }
+            });
+
+            updateScore();
+        }
+
+        function selectAnswer(selectedOption) {
+            const question = gameState.questions[gameState.currentQuestionIndex];
+            
+            // Debug logging
+            console.log('Selected option:', selectedOption);
+            console.log('Correct answer:', question.question_correct_answer);
+            console.log('Correct answer type:', typeof question.question_correct_answer);
+            console.log('Selected option type:', typeof selectedOption);
+            
+            // Ensure both values are numbers for comparison
+            const correctAnswer = parseInt(question.question_correct_answer);
+            const selectedAnswer = parseInt(selectedOption);
+            
+            console.log('Parsed correct answer:', correctAnswer);
+            console.log('Parsed selected answer:', selectedAnswer);
+            
+            const isCorrect = selectedAnswer === correctAnswer;
+            
+            console.log('Is correct?', isCorrect);
+            
+            gameState.userAnswers.push({
+                question: question.question,
+                selectedOption: selectedAnswer,
+                correctAnswer: correctAnswer,
+                isCorrect
+            });
+
+            if (isCorrect) {
+                gameState.correctAnswers++;
+                // Calculate points based on wrong answers
+                let points = 22500;
+                if (gameState.wrongAnswers === 1) points = 20000;
+                else if (gameState.wrongAnswers === 2) points = 17500;
+                else if (gameState.wrongAnswers === 3) points = 15000;
+                else if (gameState.wrongAnswers === 4) points = 12500;
+                
+                gameState.score += points;
+                console.log('Correct! Added points:', points, 'New score:', gameState.score);
+            } else {
+                gameState.wrongAnswers++;
+                // Calculate negative points
+                let negativePoints = 2500;
+                if (gameState.wrongAnswers === 2) negativePoints = 5000;
+                else if (gameState.wrongAnswers === 3) negativePoints = 7500;
+                else if (gameState.wrongAnswers === 4) negativePoints = 10000;
+                else if (gameState.wrongAnswers === 5) negativePoints = 12500;
+                
+                gameState.score -= negativePoints;
+                console.log('Wrong! Deducted points:', negativePoints, 'New score:', gameState.score);
+            }
+
+            // Move to next question or finish
+            gameState.currentQuestionIndex++;
+            if (gameState.currentQuestionIndex < gameState.questions.length) {
+                setTimeout(() => {
+                    displayCurrentQuestion();
+                }, 300);
+            } else {
+                setTimeout(() => {
+                    finishQuiz();
+                }, 300);
+            }
+        }
+
+        function updateScore() {
+            document.getElementById('scoreValue').textContent = gameState.score.toLocaleString('tr-TR');
+        }
+
+        async function finishQuiz() {
+            clearInterval(gameState.timerInterval);
+            
+            const totalTime = Date.now() - gameState.startTime;
+            const timeBonus = Math.floor(1000000 / totalTime);
+            gameState.score += timeBonus;
+
+            // Save to leaderboard
+            try {
+                const { error } = await window.supabaseClient
+                    .from('contest_1_leaderboard')
+                    .insert({
+                        user_id: ruid,
+                        user_nickname: takmaad,
+                        user_score: gameState.score,
+                        author_id: firmaid,
+                        contest_id: yarismaid
+                    });
+
+                if (error) console.error('Error saving to leaderboard:', error);
+            } catch (error) {
+                console.error('Error saving to leaderboard:', error);
+            }
+
+            // Get user ranking
+            await getUserRank();
+            
+            // Display results
+            document.getElementById('correctAnswers').textContent = gameState.correctAnswers;
+            document.getElementById('finalScore').textContent = gameState.score.toLocaleString('tr-TR');
+            
+            showScreen('resultScreen');
+        }
+
+        async function getUserRank() {
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('contest_1_leaderboard')
+                    .select('user_id, user_score')
+                    .eq('contest_id', yarismaid)
+                    .order('user_score', { ascending: false });
+
+                if (error) throw error;
+
+                const userRank = data.findIndex(entry => entry.user_id === ruid) + 1;
+                if (userRank > 0) {
+                    document.getElementById('userRank').textContent = `${userRank}. sıra`;
+                } else {
+                    document.getElementById('userRank').textContent = 'Bulunamadı';
+                }
+            } catch (error) {
+                console.error('Error getting user rank:', error);
+                document.getElementById('userRank').textContent = 'Hata';
+            }
+        }
+
+        function showScreen(screenId) {
+            const screens = ['startScreen', 'loadingScreen', 'errorScreen', 'gameScreen', 'resultScreen'];
+            screens.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function restartQuiz() {
+            showScreen('startScreen');
+        }
+
+        function goToContests() {
+            window.location.href = 'https://example.com';
+        }
+    </script>
+</body>
+</html>
