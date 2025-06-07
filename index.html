@@ -165,6 +165,14 @@
             padding: 40px 20px;
         }
 
+        .contest-logo {
+            max-width: 200px;
+            max-height: 150px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
         .start-title {
             font-size: 32px;
             font-weight: bold;
@@ -291,8 +299,9 @@
     <div class="game-container">
         <!-- Start Screen -->
         <div id="startScreen" class="start-screen">
-            <h1 class="start-title">Yarışmaya Hoş Geldiniz!</h1>
-            <p class="start-subtitle">5 soruluk yarışmaya hazır mısınız?<br>Her doğru cevap için puan kazanacaksınız!</p>
+            <img id="contestLogo" class="contest-logo hidden" alt="Yarışma logosu">
+            <h1 id="startTitle" class="start-title">Yarışmaya Hoş Geldin!</h1>
+            <p id="startSubtitle" class="start-subtitle">Yarışmaya hazır mısınız?</p>
             <button class="btn" onclick="startQuiz()">Yarışmayı Başlat</button>
         </div>
 
@@ -350,7 +359,7 @@
                 </div>
                 <div class="stat-item">
                     <div id="userRank" class="stat-value">-</div>
-                    <div class="stat-label">Sıralama</div>
+                    <div class="stat-label">En Yüksek Sıralamanız</div>
                 </div>
             </div>
 
@@ -421,6 +430,8 @@
         const firmaid = urlParams.get('firmaid');
         const kategori = urlParams.get('kategori');
         const yarismaid = urlParams.get('yarismaid');
+        const logo = urlParams.get('logo');
+        const geridon = urlParams.get('geridon');
 
         // Validate required parameters
         function validateParameters() {
@@ -438,6 +449,17 @@
                     'Gerekli parametreler eksik. Bu sayfaya doğru linkten eriştiğinizden emin olun.';
                 showScreen('errorScreen');
                 return;
+            }
+
+            // Set up start screen content
+            document.getElementById('startTitle').textContent = `Yarışmaya Hoş Geldin, ${takmaad}!`;
+            document.getElementById('startSubtitle').textContent = `${yarismaadi} yarışmasına hazır mısınız?`;
+            
+            // Show logo if provided
+            if (logo) {
+                const logoEl = document.getElementById('contestLogo');
+                logoEl.src = logo;
+                logoEl.classList.remove('hidden');
             }
 
             // Load configuration first
@@ -770,7 +792,11 @@
         }
 
         function goToContests() {
-            window.location.href = 'https://example.com';
+            if (geridon) {
+                window.location.href = geridon;
+            } else {
+                window.location.href = 'https://example.com';
+            }
         }
     </script>
 </body>
