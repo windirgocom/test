@@ -609,7 +609,8 @@
                     const optionEl = document.createElement('div');
                     optionEl.className = 'option';
                     optionEl.textContent = option;
-                    optionEl.onclick = () => selectAnswer(index + 1);
+                    // Pass the actual option text instead of index
+                    optionEl.onclick = () => selectAnswer(option);
                     optionsContainer.appendChild(optionEl);
                 }
             });
@@ -617,25 +618,29 @@
             updateScore();
         }
 
-        function selectAnswer(selectedOption) {
+        function selectAnswer(selectedOptionText) {
             const question = gameState.questions[gameState.currentQuestionIndex];
             
             // Debug logging
             console.log('=== ANSWER SELECTION DEBUG ===');
             console.log('Question:', question.question);
-            console.log('Selected option number:', selectedOption);
+            console.log('Selected option text:', selectedOptionText);
             console.log('Correct answer from DB:', question.question_correct_answer);
-            console.log('Correct answer type:', typeof question.question_correct_answer);
-            console.log('Selected option type:', typeof selectedOption);
+            console.log('All options:', {
+                option1: question.question_option_1,
+                option2: question.question_option_2,
+                option3: question.question_option_3,
+                option4: question.question_option_4
+            });
             
-            // Convert both to strings for comparison (since DB might store as string)
-            const correctAnswerStr = String(question.question_correct_answer).trim();
-            const selectedAnswerStr = String(selectedOption).trim();
+            // Trim whitespace and compare the actual text
+            const correctAnswerText = String(question.question_correct_answer).trim();
+            const selectedAnswerText = String(selectedOptionText).trim();
             
-            console.log('Correct answer (string):', correctAnswerStr);
-            console.log('Selected answer (string):', selectedAnswerStr);
+            console.log('Correct answer (trimmed):', correctAnswerText);
+            console.log('Selected answer (trimmed):', selectedAnswerText);
             
-            const isCorrect = selectedAnswerStr === correctAnswerStr;
+            const isCorrect = selectedAnswerText === correctAnswerText;
             
             console.log('Comparison result (isCorrect):', isCorrect);
             console.log('Current wrong answers before this:', gameState.wrongAnswers);
@@ -644,8 +649,8 @@
             
             gameState.userAnswers.push({
                 question: question.question,
-                selectedOption: selectedAnswerStr,
-                correctAnswer: correctAnswerStr,
+                selectedOption: selectedAnswerText,
+                correctAnswer: correctAnswerText,
                 isCorrect
             });
 
